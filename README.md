@@ -2,7 +2,7 @@
 
 Mid-fidelity clickable prototype for MSMA 5033 Human-Computer Interaction, Module 5.
 
-**Live:** https://USERNAME.github.io/reservation-prototype/
+**Live:** https://saivikramsimhadri.github.io/reservation-prototype/
 
 ## What this is
 
