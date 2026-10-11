@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="description" content="Mid-fidelity clickable prototype of a reservation assistant with constraint chips and a pre-commit verification card. MSMA 5033 Human-Computer Interaction.">
+<meta name="description" content="Version 2 of a mid-fidelity reservation assistant prototype, revised after usability testing. MSMA 5033 Human-Computer Interaction.">
 <meta name="author" content="Sai Vikram Simhadri">
 <style>
   :root{ color-scheme: light; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
@@ -447,6 +447,13 @@
     cursor:not-allowed;
   }
   .btn:disabled:hover{opacity:1}
+  .btn.blocked{
+    background:var(--field);
+    color:var(--muted);
+    border-color:var(--line-firm);
+    cursor:not-allowed;
+  }
+  .btn.blocked:hover{opacity:1}
   .btn.wide{flex:1}
 
   :where(button,a,[tabindex]):focus-visible{
@@ -582,6 +589,76 @@
     position:absolute;width:1px;height:1px;padding:0;margin:-1px;
     overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;
   }
+
+  /* ---------- v2: constraint rows on the parse screen ---------- */
+  .crows{display:flex;flex-direction:column;gap:7px;margin:0}
+  .crow{
+    display:flex;align-items:flex-start;gap:10px;
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:9px 11px;
+    background:var(--paper);
+  }
+  .crow .body{flex:1;min-width:0}
+  .crow .val{font-size:13.5px;font-weight:500;line-height:1.3}
+  .crow .src{font-size:11.5px;color:var(--muted);line-height:1.4;margin-top:2px}
+  .crow .src i{font-style:italic;color:var(--ink)}
+  .crow .pen{
+    flex:none;border:1px solid var(--line-firm);background:var(--paper);
+    color:var(--muted);border-radius:7px;padding:4px 9px;
+    font:inherit;font-size:11.5px;cursor:pointer;
+  }
+  .crow .pen:hover{border-color:var(--ink);color:var(--ink)}
+  .crow.conflict{
+    background:var(--flag-bg);
+    border:2px solid var(--flag);
+  }
+  .crow.conflict .val{color:var(--flag);font-weight:700}
+  .crow.conflict .mismatch{
+    font-size:12.5px;color:var(--flag);font-weight:600;margin-top:4px;line-height:1.4;
+  }
+  .crow.fixed{border-color:var(--line-firm);background:var(--field)}
+  .resolve{display:flex;gap:7px;margin-top:9px;flex-wrap:wrap}
+  .resolve .opt{font-size:12.5px;padding:6px 12px}
+
+  /* ---------- v2: paired rows on the pre-commit card ---------- */
+  .prow{
+    display:flex;gap:10px;align-items:flex-start;
+    padding:9px 10px;border-radius:8px;
+  }
+  .prow .lab{font-size:13px;font-weight:600;line-height:1.3}
+  .prow .pair{font-size:12px;color:var(--muted);line-height:1.5;margin-top:2px}
+  .prow .pair b{color:var(--ink);font-weight:600}
+  .prow.flag{background:var(--flag-bg);border:2px solid var(--flag);padding:8px 9px}
+  .prow.flag .lab{color:var(--flag)}
+  .prow.flag .pair{color:var(--flag)}
+  .prow.flag .pair b{color:var(--flag)}
+  .glyph.pend{background:var(--flag)}
+  .glyph.open{background:var(--paper);border:2px solid var(--flag-line);color:var(--flag)}
+
+  .vtag{
+    display:inline-block;
+    font-family:"IBM Plex Mono", ui-monospace, monospace;
+    font-size:10px;letter-spacing:.09em;text-transform:uppercase;
+    border:1px solid var(--line-firm);border-radius:4px;
+    padding:2px 7px;color:var(--muted);margin-left:8px;vertical-align:2px;
+  }
+
+  /* ---------- participant mode (#test) ---------- */
+  /* Hides everything that would prime a test participant: the subtitle naming the
+     seeded error, the state rail, the annotation panel, and the researcher verdict. */
+  body[data-mode="test"] .masthead,
+  body[data-mode="test"] .rail-head,
+  body[data-mode="test"] .rail,
+  body[data-mode="test"] .notes,
+  body[data-mode="test"] .a11y,
+  body[data-mode="test"] .navrow{ display:none; }
+  body[data-mode="test"] .stage{
+    grid-template-columns:minmax(0,404px);
+    justify-content:center;
+    margin-top:0;
+  }
+  body[data-mode="test"] .wrap{ padding-block:32px 40px; }
 </style>
 </head>
 <body>
@@ -589,11 +666,11 @@
 
   <header class="masthead">
     <div>
-      <p class="eyebrow">Module 5 &middot; Clickable prototype</p>
+      <p class="eyebrow">Version 2 &middot; Revised after usability testing</p>
       <h1>Constraint chips with a pre-commit card</h1>
-      <p class="sub">A mid-fidelity reservation assistant built to answer one question: does a user notice and correct a wrong constraint before booking? The parse on screen 4 contains a deliberate error.</p>
+      <p class="sub">A reservation assistant revised after three test sessions. The parse still misreads the request as a party of five. What changed is that the system now detects the contradiction itself rather than leaving it to the user to spot.</p>
     </div>
-    <p class="meta">Sai Vikram Simhadri<br>MSMA 5033 D1A<br>8 states &middot; 4 AI states</p>
+    <p class="meta">Sai Vikram Simhadri<br>MSMA 5033 D1A<br>8 states &middot; 4 AI states &middot; v2</p>
   </header>
 
   <div class="rail-head">
@@ -658,7 +735,7 @@
 
   var REQUEST = "table for 6 this Saturday around 7, one of us is vegetarian, and we need to sit together";
 
-  var state = { step: 1, party: 5, corrected: false, editing: false };
+  var state = { step: 1, party: 5, asked: 6, resolved: false, corrected: false, editing: false };
 
   var STEPS = [
     { n:1, name:"Open assistant" },
@@ -732,12 +809,13 @@
     s.appendChild(row);
   }
 
-  function chipData(){
+  function constraintData(){
     return [
-      { id:"party", label:"party of " + state.party, editable:true },
-      { id:"time",  label:"Sat 7:00 PM", editable:false },
-      { id:"seat",  label:"one table, seats 6", editable:false },
-      { id:"diet",  label:"vegetarian options", editable:false }
+      { id:"party", label:"party of " + state.party, src:"table for 6",
+        asked:6, read:state.party, conflict:(state.party !== 6 && !state.resolved) },
+      { id:"time",  label:"Sat 7:00 PM", src:"this Saturday around 7", conflict:false },
+      { id:"seat",  label:"one table, seats 6", src:"we need to sit together", conflict:false },
+      { id:"diet",  label:"vegetarian options", src:"one of us is vegetarian", conflict:false }
     ];
   }
 
@@ -745,21 +823,55 @@
     s.appendChild(el("div","bubble", REQUEST));
     s.appendChild(el("p","seclabel","What I understood"));
 
-    var wrap = el("div","chips");
-    chipData().forEach(function(c){
-      var b = el("button","chip");
-      b.type = "button";
-      b.appendChild(el("span", null, c.label));
-      b.appendChild(el("span","pen","edit"));
-      b.setAttribute("aria-label","Edit constraint: " + c.label);
-      if(c.id === "party"){
-        if(state.corrected) b.className = "chip edited";
-        b.setAttribute("aria-expanded", state.editing ? "true" : "false");
-        b.onclick = function(){ state.editing = !state.editing; go(state.editing ? 5 : 4); };
-      } else {
-        b.onclick = function(){ state.editing = false; go(4); };
+    var data = constraintData();
+    var hasConflict = data.some(function(c){ return c.conflict; });
+
+    var wrap = el("div","crows");
+    data.forEach(function(c){
+      var cls = "crow";
+      if(c.conflict) cls += " conflict";
+      else if(c.id === "party" && state.corrected) cls += " fixed";
+      var r = el("div", cls);
+
+      var body = el("div","body");
+      body.appendChild(el("div","val", c.label));
+      var src = el("div","src");
+      src.appendChild(document.createTextNode("from "));
+      src.appendChild(el("i", null, "\u201c" + c.src + "\u201d"));
+      body.appendChild(src);
+
+      if(c.conflict){
+        body.appendChild(el("div","mismatch",
+          "You wrote " + c.asked + ", I read " + c.read + "."));
+        var res = el("div","resolve");
+        [[c.asked, "Use " + c.asked], [c.read, "Keep " + c.read]].forEach(function(pair){
+          var o = el("button","opt", pair[1]);
+          o.type = "button";
+          o.setAttribute("aria-label", pair[1] + " as the party size");
+          o.onclick = function(){
+            state.party = pair[0];
+            state.asked = pair[0];
+            state.resolved = true;
+            state.corrected = true;
+            go(4);
+          };
+          res.appendChild(o);
+        });
+        body.appendChild(res);
       }
-      wrap.appendChild(b);
+      r.appendChild(body);
+
+      if(!c.conflict){
+        var pen = el("button","pen","Edit");
+        pen.type = "button";
+        pen.setAttribute("aria-label","Edit constraint: " + c.label);
+        pen.onclick = function(){
+          if(c.id === "party"){ state.editing = !state.editing; go(state.editing ? 5 : 4); }
+          else { go(4); }
+        };
+        r.appendChild(pen);
+      }
+      wrap.appendChild(r);
     });
     s.appendChild(wrap);
 
@@ -778,25 +890,38 @@
         o.setAttribute("aria-pressed", String(n === state.party));
         o.setAttribute("aria-label","Set party size to " + n);
         o.onclick = function(){
-          state.party = n;
-          state.corrected = (n === 6);
-          state.editing = false;
-          go(4);
+          state.party = n; state.asked = n; state.resolved = true;
+          state.corrected = true; state.editing = false; go(4);
         };
         opts.appendChild(o);
       });
       ed.appendChild(opts);
       s.appendChild(ed);
+    } else if(hasConflict){
+      var note = el("p","assistant small",
+        "I found a disagreement between your message and what I read. Choose one before I search.");
+      note.id = "conflict-note";
+      s.appendChild(note);
     } else if(state.corrected){
-      s.appendChild(el("p","assistant small","Updated. Nothing else was restated."));
-    } else {
-      s.appendChild(el("p","assistant small","Tap any chip to correct it. Nothing has been searched yet."));
+      s.appendChild(el("p","assistant small","Resolved. Nothing else was restated."));
     }
 
     var row = el("div","btnrow");
-    var b = el("button","btn wide","Looks right, find tables");
+    var b = el("button","btn wide", hasConflict ? "Resolve the conflict to continue" : "Looks right, find tables");
     b.type = "button";
-    b.onclick = function(){ state.editing = false; go(6); };
+    if(hasConflict){
+      // aria-disabled rather than disabled, so the control keeps its place in the
+      // tab order and a screen reader still reaches the reason attached to it.
+      b.setAttribute("aria-disabled","true");
+      b.setAttribute("aria-describedby","conflict-note");
+      b.className = "btn wide blocked";
+      b.onclick = function(){
+        var row = document.querySelector(".crow.conflict .opt");
+        if(row) row.focus();
+      };
+    } else {
+      b.onclick = function(){ state.editing = false; go(6); };
+    }
     row.appendChild(b);
     s.appendChild(row);
   }
@@ -836,46 +961,81 @@
     nm.textContent = "Casa Verde, Saturday 7:00 PM";
     s.appendChild(nm);
 
-    var rows = el("div","rows");
+    // Each row carries both questions: what was asked, and what the restaurant said.
+    // A check mark appears only when the two agree.
     var items = [
-      { t:"party of " + state.party, s:"confirmed by the restaurant", ok:true },
-      { t:"Sat 7:00 PM", s:"confirmed by the restaurant", ok:true },
-      { t:"one table, seats 6", s:"not confirmed, no seating data published", ok:false },
-      { t:"vegetarian options", s:"confirmed from the posted menu", ok:true }
+      { lab:"Party size", asked:String(state.asked), got:"can seat " + state.party,
+        state: (state.party === state.asked ? "ok" : "conflict") },
+      { lab:"Date and time", asked:"Saturday 7:00 PM", got:"available",
+        state:"ok" },
+      { lab:"One table seating 6", asked:"everyone seated together", got:"no seating data published",
+        state:"missing" },
+      { lab:"Vegetarian options", asked:"one vegetarian guest", got:"six vegetarian mains on the posted menu",
+        state:"ok" }
     ];
+    // A contradiction outranks a gap, so it moves to the top of the card.
+    items.sort(function(a,b){
+      var rank = { conflict:0, missing:1, ok:2 };
+      return rank[a.state] - rank[b.state];
+    });
+
+    var rows = el("div","rows");
     items.forEach(function(it){
-      var r = el("div","row" + (it.ok ? "" : " unverified"));
-      var g = el("div","glyph", it.ok ? "✓" : "?");
+      var r = el("div","prow" + (it.state === "ok" ? "" : " flag"));
+      var g = el("div","glyph" + (it.state === "ok" ? "" : (it.state === "conflict" ? " pend" : " open")),
+                 it.state === "ok" ? "✓" : (it.state === "conflict" ? "!" : "?"));
       g.setAttribute("aria-hidden","true");
       r.appendChild(g);
       var tx = el("div");
-      tx.appendChild(el("div","t", it.t));
-      tx.appendChild(el("div","s", (it.ok ? "Verified: " : "Unverified: ") + it.s));
+      tx.appendChild(el("div","lab", it.lab));
+      var pr = el("div","pair");
+      pr.appendChild(el("b", null, "You asked: "));
+      pr.appendChild(document.createTextNode(it.asked));
+      pr.appendChild(document.createElement("br"));
+      pr.appendChild(el("b", null, "Restaurant: "));
+      pr.appendChild(document.createTextNode(it.got));
+      tx.appendChild(pr);
       r.appendChild(tx);
       rows.appendChild(r);
     });
     s.appendChild(rows);
 
+    var conflict = items.some(function(i){ return i.state === "conflict"; });
+
     var msg = el("p","gatemsg");
     msg.id = "gate-reason";
-    var mg = el("div","glyph","!");
+    var mg = el("div","glyph" + (conflict ? "" : " open"), conflict ? "!" : "?");
     mg.setAttribute("aria-hidden","true");
     msg.appendChild(mg);
-    msg.appendChild(document.createTextNode("One constraint is unverified, so I will not book on your behalf."));
+    msg.appendChild(document.createTextNode(conflict
+      ? "Your request and the booking disagree on party size. Fix that before I book."
+      : "Seating is not published, so I will book and ask the restaurant to hold one table."));
     s.appendChild(msg);
 
     var row = el("div","btnrow");
-    var dis = el("button","btn","Confirm booking");
-    dis.type = "button";
-    dis.disabled = true;
-    dis.setAttribute("aria-describedby","gate-reason");
-    row.appendChild(dis);
-    var call = el("button","btn ghost","Call to confirm seating");
-    call.type = "button";
-    call.setAttribute("aria-label","Call the restaurant to confirm seating, then book");
-    call.onclick = function(){ go(8); };
-    row.appendChild(call);
+    // A contradiction is a hard stop. Missing data is an informed override.
+    var main = el("button","btn", conflict
+      ? "Confirm booking"
+      : "Book and ask for one table for " + state.party);
+    main.type = "button";
+    main.setAttribute("aria-describedby","gate-reason");
+    if(conflict){
+      main.setAttribute("aria-disabled","true");
+      main.className = "btn blocked";
+      main.onclick = function(){ go(4); };
+    } else {
+      main.onclick = function(){ go(8); };
+    }
+    row.appendChild(main);
     s.appendChild(row);
+
+    var alt = el("p","assistant small");
+    alt.style.marginTop = "8px";
+    var link = el("button","pen", conflict ? "Go back and fix it" : "Call the restaurant instead");
+    link.type = "button";
+    link.onclick = function(){ go(conflict ? 4 : 8); };
+    alt.appendChild(link);
+    s.appendChild(alt);
   }
 
   function screen8(s){
@@ -885,28 +1045,31 @@
     s.appendChild(ok);
 
     var rows = el("div","rows");
-    [
-      "Table for " + state.party,
-      "One table, seats 6, confirmed by phone",
-      "Vegetarian options on the posted menu"
-    ].forEach(function(t){
-      var r = el("div","row");
-      var g = el("div","glyph","✓");
+    var lines = [
+      { t:"Table for " + state.party, st:"ok" },
+      { t:"One table seating " + state.party + ", requested", st:"pending" },
+      { t:"Vegetarian options on the posted menu", st:"ok" }
+    ];
+    lines.forEach(function(l){
+      var r = el("div","row" + (l.st === "ok" ? "" : " unverified"));
+      var g = el("div","glyph" + (l.st === "ok" ? "" : " open"), l.st === "ok" ? "✓" : "?");
       g.setAttribute("aria-hidden","true");
       r.appendChild(g);
       var d = el("div");
-      d.appendChild(el("div","t", t));
+      d.appendChild(el("div","t", l.t));
+      if(l.st !== "ok") d.appendChild(el("div","s","Seating pending. The restaurant has not confirmed."));
       r.appendChild(d);
       rows.appendChild(r);
     });
     s.appendChild(rows);
 
-    s.appendChild(el("p","assistant small","Confirmation sent to your email. The seating note was added to the reservation."));
+    s.appendChild(el("p","assistant small",
+      "Confirmation sent to your email. The seating request is recorded as pending and will update when the restaurant replies."));
 
     var row = el("div","btnrow");
     var b = el("button","btn ghost wide","Restart the flow");
     b.type = "button";
-    b.onclick = function(){ state = { step:1, party:5, corrected:false, editing:false }; go(1); };
+    b.onclick = function(){ state = { step:1, party:5, asked:6, resolved:false, corrected:false, editing:false }; go(1); };
     row.appendChild(b);
     s.appendChild(row);
   }
@@ -928,26 +1091,25 @@
               "My Module 2 audit found that content replaced without a transition goes unnoticed, which is the condition change blindness describes. Matching the skeleton to the result means the arrival is a fill rather than a substitution."],
         pr:["Visibility of system status", "The system reports not only that it is working but what it is producing, which is the part a generic spinner leaves out."] },
 
-    4:{ tag:"AI state 2 of 4 &middot; Explainability", h:"The parse is shown before the search runs",
-        body:["The chips are the system's reading of the request, exposed at the cheapest possible moment to correct it. Nothing has been searched, so a wrong chip costs one tap rather than a wasted result set built on a wrong premise.",
-              "The party chip reads five. The request said six. This is deliberate and it is the instrument of the test. If a participant reaches the confirmation card without catching it, the concept has failed at its central claim, and I would rather learn that here than from a real booking."],
-        pr:["Amershi et al. (2019), guideline 11", "Make clear what the system understood. The chips do this as visible state rather than as a sentence the user has to read and hold."] },
+    4:{ tag:"AI state 2 of 4 &middot; Explainability", h:"The system checks its own parse before the user has to",
+        body:["Each constraint now shows the phrase it came from, so the reading and its evidence sit together. The party row compares what the request said against what the parse produced, finds they disagree, and says so in the user's own numbers: you wrote 6, I read 5.",
+              "Testing drove this. Two of three participants never saw the wrong number on this screen, and one could not find it even after being told a mistake was there. Leaving detection to the reader failed, so detection moved to the system. The continue button is held until the conflict is resolved, which is the one place in the flow where a hard stop costs nothing."],
+        pr:["Amershi et al. (2019), guideline 11", "Make clear what the system understood, and support efficient correction. Version 1 did the first and assumed the second would follow. It did not."] },
 
-    5:{ tag:"AI state 3 of 4 &middot; Error recovery", h:"Correction in place, with the evidence beside it",
-        body:["Tapping the chip opens an editor that quotes the original message with the number in bold. The user is not asked to trust the correction or to restate the request. They see their own words and the system's reading of them side by side.",
-              "Five options appear rather than a free text field. This is a mid-fidelity decision: a keypad would test typing, and what I need to test is whether the mistake is noticed at all."],
-        pr:["User control and freedom", "The exit is scoped to the thing that is wrong. Nothing else in the parse is disturbed, so correcting one constraint never costs the other three."] },
+    5:{ tag:"AI state 3 of 4 &middot; Error recovery", h:"Resolution is a choice between two stated values",
+        body:["The conflict offers both candidates as one-tap buttons rather than opening a free editor. The user is not asked to remember what they typed or to re-enter anything, only to say which of two numbers is right.",
+              "The editor from version 1 remains available on the rows that are not in conflict, so a user can still change a value the system had no reason to question."],
+        pr:["User control and freedom", "The system detects the problem but does not resolve it unilaterally. It narrows the decision to two options and hands it back."] },
 
     6:{ tag:"Core step", h:"A reason per card, not one explanation for the list",
         body:["Each result states what it matched on, in the user's own constraint language. My Module 2 audit of YouTube found that every recommendation carried identical authority with no stated basis, leaving the user unable to tell a grounded suggestion from a guess.",
               "The third card is honest that it satisfies the seating constraint by pushing two tables together, which is the thing the user asked to avoid. Ranking it third and saying why is more useful than hiding it."],
         pr:["Mental models", "A reason line per card gives the user evidence to build a model against, instead of a ranking they can only accept or reject whole."] },
 
-    7:{ tag:"AI state 4 of 4 &middot; Uncertainty", h:"The system declines to assert what it did not check",
-        body:["Every row names the source that confirmed it. The one the system could not verify is the most prominent element on the card rather than the quietest, and the confirm control is disabled with the reason attached to it.",
-              "This is the failure state as a handoff. The assistant offers the phone call instead of inferring past the gap, because the cost of a wrong assumption here is six people arriving to two separate tables.",
-              "Amber appears on this screen and nowhere else in the prototype. Colour is the strongest saliency cue available and spending it on branding would contaminate the exact thing being measured."],
-        pr:["Amershi et al. (2019), guidelines 2 and 11", "Make clear how well the system can do what it can do, and scope services when confidence is low. Withholding the action returns the commitment to the person who bears its cost."] },
+    7:{ tag:"AI state 4 of 4 &middot; Uncertainty", h:"Each row answers two questions instead of one",
+        body:["Version 1 put a single check mark beside each constraint, which turned out to answer the wrong question. The mark meant the restaurant could accommodate the value, not that the value was the one requested, and a participant read a party of five as confirmed when the request said six.",
+              "Every row now carries both lines. You asked, and Restaurant. A check appears only when the two agree. A contradiction sorts to the top of the card and holds the booking. A gap in the restaurant's data does not hold the booking, because the user can act on it and the system can ask."],
+        pr:["Amershi et al. (2019), guidelines 2 and 11", "Make clear how well the system can do what it can do. A badge that collapses two questions into one mark overstates what was checked."] },
 
     8:{ tag:"Exit", h:"The record states how each constraint was settled",
         body:["The confirmation repeats the constraints rather than a booking reference alone, and it records that seating was confirmed by phone rather than by the platform. The provenance survives into the artifact the user keeps."],
@@ -958,6 +1120,7 @@
 
   function renderRail(){
     var rail = document.getElementById("rail");
+    if(!rail) return;
     rail.textContent = "";
     STEPS.forEach(function(st){
       var b = el("button","step" + (st.n < state.step ? " done" : ""));
@@ -976,6 +1139,7 @@
 
   function renderNotes(){
     var host = document.getElementById("notes");
+    if(!host) return;
     host.textContent = "";
     var d = NOTES[state.step];
 
@@ -1024,20 +1188,41 @@
     renderRail();
     renderScreen();
     renderNotes();
-    document.getElementById("back").disabled = (n === 1);
+    var backBtn = document.getElementById("back");
+    if(backBtn) backBtn.disabled = (n === 1);
   }
 
-  document.getElementById("back").onclick = function(){
+  if(document.getElementById("back")) document.getElementById("back").onclick = function(){
     if(state.step > 1){
       state.editing = false;
       go(state.step === 5 ? 4 : state.step - 1);
     }
   };
-  document.getElementById("restart").onclick = function(){
-    state = { step:1, party:5, corrected:false, editing:false };
+  if(document.getElementById("restart")) document.getElementById("restart").onclick = function(){
+    state = { step:1, party:5, asked:6, resolved:false, corrected:false, editing:false };
     go(1);
   };
 
+  // Participant mode: append #test to the URL. Researcher-facing elements are
+  // removed from the DOM rather than hidden with CSS, so nothing that names the
+  // seeded error survives in the page a participant is given.
+  var TESTING = (location.hash || "").toLowerCase() === "#test";
+
+  function applyMode(){
+    document.body.setAttribute("data-mode", TESTING ? "test" : "review");
+    if(!TESTING) return;
+    ["#rail", ".rail-head", ".masthead", ".a11y", ".navrow", "#notes"]
+      .forEach(function(sel){
+        var n = document.querySelector(sel);
+        if(n && n.parentNode) n.parentNode.removeChild(n);
+      });
+    document.title = "Reservation assistant";
+  }
+
+  // Switching modes reloads, so a session never starts from a half-torn page.
+  window.addEventListener("hashchange", function(){ location.reload(); });
+
+  applyMode();
   go(1);
 })();
 </script>
